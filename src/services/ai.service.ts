@@ -28,26 +28,24 @@ class AIService {
     const models = [
       priorityModel,
       this.lastSuccessfulModel,
-      "gemini-2.5-flash",
-      "gemini-2.5-pro",
-      "gemini-2.0-flash"
+      "gemini-1.5-flash",
+      "gemini-2.0-flash",
+      "gemini-1.5-pro"
     ].filter((m, i, arr) => m && arr.indexOf(m) === i) as string[];
 
     if (this.isThrottled) {
       throw new Error("COOLDOWN: System is cooling down from rate limits. Please wait.");
     }
 
-    let modelsTriedWithAllKeys = 0;
     let lastError = "";
 
     for (const m of models) {
-      // CIRCUIT BREAKER: If we've already tried a model with all keys and failed, 
-      // it's highly likely we are globally rate-limited. Stop immediately.
       let keysFailedForThisModel = 0;
+      const totalKeys = API_KEYS.length;
 
-      while (keysFailedForThisModel < API_KEYS.length) {
+      while (keysFailedForThisModel < totalKeys) {
         const genAI = getGenAI();
-        if (!genAI) throw new Error("API Key Missing");
+        if (!genAI) throw new Error("API Key Missing. Check your configuration.");
 
         try {
           const model = genAI.getGenerativeModel({ model: m }, { apiVersion: 'v1' });
@@ -62,39 +60,35 @@ class AIService {
           const msg = (err.message || "").toLowerCase();
           lastError = err.message;
 
-          if (msg.includes("429") || msg.includes("quota")) {
-            console.warn(`Model ${m} rate limited on Key ${currentKeyIndex + 1}.`);
+          // 429 = Rate Limit, 503 = Service Unavailable (often due to overload)
+          if (msg.includes("429") || msg.includes("quota") || msg.includes("503") || msg.includes("service unavailable")) {
+            console.warn(`Model ${m} failed on Key ${currentKeyIndex + 1}: ${err.message}`);
             keysFailedForThisModel++;
 
-            if (API_KEYS.length > 1) {
+            if (totalKeys > 1) {
               this.rotateKey();
+              if (msg.includes("503")) await this.sleep(1000); // Small delay for 503
               continue; // Try SAME model with NEXT key
             } else {
               break; // Only one key, move to next model
             }
           }
 
-          if (msg.includes("503") || msg.includes("service unavailable")) {
-            await this.sleep(2000);
-            keysFailedForThisModel++; // Count as a failure to avoid infinite loop
-            continue;
-          }
-
           console.error(`AI Failure [${m}]:`, err.message);
-          break; // Hard failure, try next model
+          break; // Hard failure (e.g. 404), try next model
         }
-      }
-
-      // If we got here, all keys failed for this specific model
-      modelsTriedWithAllKeys++;
-      if (modelsTriedWithAllKeys >= 1) {
-        // If the first model failed with all keys, we are definitely out of quota.
-        // Don't waste time with other models.
-        break;
       }
     }
 
-    throw new Error("API Quota Fully Exhausted. Both keys are blocked. Please wait 5-10 minutes.");
+    if (lastError.includes("429") || lastError.includes("quota")) {
+      throw new Error("QUOTA_EXHAUSTED: All API keys have reached their rate limits. Cooling down.");
+    }
+    
+    throw new Error(lastError || "Intelligence Engine Offline. Please check your internet connection and API keys.");
+  }
+
+  public setThrottled(status: boolean) {
+    this.isThrottled = status;
   }
 
   async analyze(code: string, language: string, filename?: string, level: string = 'intermediate'): Promise<AnalysisResult> {

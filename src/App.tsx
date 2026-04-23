@@ -39,6 +39,7 @@ export default function App() {
   const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'model', content: string }[]>([]);
   const [isAsking, setIsAsking] = useState(false);
   const [isCooldown, setIsCooldown] = useState(false);
+  const [cooldownTime, setCooldownTime] = useState(0);
   const [showMobileWarning, setShowMobileWarning] = useState(false);
 
   // --- Mobile Detection ---
@@ -87,6 +88,22 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [code]);
 
+  // --- Cooldown Timer ---
+  useEffect(() => {
+    if (!isCooldown) return;
+    const timer = setInterval(() => {
+      setCooldownTime(prev => {
+        if (prev <= 1) {
+          setIsCooldown(false);
+          aiService.setThrottled(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [isCooldown]);
+
   // --- Core Actions ---
 
   const languageTimerRef = React.useRef<number | null>(null);
@@ -124,10 +141,11 @@ export default function App() {
       setHistory(prev => [newSnapshot, ...prev.filter(h => h.code !== code)].slice(0, 10));
     } catch (err: any) {
       const msg = err.message?.toLowerCase() || "";
-      if (msg.includes("429") || msg.includes("quota")) {
-        setError("Rate Limit Exceeded. Please wait 60 seconds.");
+      if (msg.includes("quota_exhausted") || msg.includes("429") || msg.includes("quota")) {
+        setError("Rate Limit Exceeded. All keys are cooling down.");
         setIsCooldown(true);
-        setTimeout(() => setIsCooldown(false), 60000);
+        setCooldownTime(60);
+        aiService.setThrottled(true);
       } else if (msg.includes("503")) {
         setError("AI Servers Heavy Load. Retrying in background...");
       } else {
@@ -158,6 +176,7 @@ export default function App() {
         onAnalyze={() => analyzeCode()}
         isAnalyzing={isAnalyzing}
         isCooldown={isCooldown}
+        cooldownTime={cooldownTime}
         saveStatus={saveStatus}
         hasCode={!!code.trim()}
       />

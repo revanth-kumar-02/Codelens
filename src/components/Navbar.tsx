@@ -8,11 +8,12 @@ interface NavbarProps {
   onAnalyze: () => void;
   isAnalyzing: boolean;
   isCooldown: boolean;
+  cooldownTime: number;
   saveStatus: 'idle' | 'saving' | 'saved';
   hasCode: boolean;
 }
 
-export const Navbar = ({ mode, setMode, onAnalyze, isAnalyzing, isCooldown, saveStatus, hasCode }: NavbarProps) => {
+export const Navbar = ({ mode, setMode, onAnalyze, isAnalyzing, isCooldown, cooldownTime, saveStatus, hasCode }: NavbarProps) => {
   return (
     <header className="h-16 flex items-center justify-between px-8 bg-slate-900/50 border-b border-slate-800 backdrop-blur-xl shrink-0 z-50">
       <div className="flex items-center gap-10">
@@ -68,11 +69,11 @@ export const Navbar = ({ mode, setMode, onAnalyze, isAnalyzing, isCooldown, save
           {isAnalyzing ? (
             <RefreshCw size={16} className="animate-spin" />
           ) : isCooldown ? (
-            <AlertCircle size={16} />
+            <AlertCircle size={16} className="animate-pulse" />
           ) : (
             <Sparkles size={16} />
           )}
-          {isAnalyzing ? 'Analyzing...' : isCooldown ? 'Cooling Down (60s)...' : 'Analyze Intelligence'}
+          {isAnalyzing ? 'Analyzing...' : isCooldown ? `Cooling Down (${cooldownTime}s)...` : 'Analyze Intelligence'}
         </button>
       </div>
     </header>
