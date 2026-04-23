@@ -8,7 +8,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { AlertCircle, X } from 'lucide-react';
 
 // Types & Services
-import { Mode, AppSettings, AnalysisResult, DEFAULT_SETTINGS } from './types';
+import { Mode, AppSettings, AnalysisResult, DEFAULT_SETTINGS, HistoryItem } from './types';
 import { aiService } from './services/ai.service';
 
 // Components
@@ -31,7 +31,7 @@ export default function App() {
   const [code, setCode] = useState('');
   const [language, setLanguage] = useState('plaintext');
   const [filename, setFilename] = useState('');
-  const [history, setHistory] = useState<string[]>([]);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
   
   // --- Analysis State ---
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -114,7 +114,14 @@ export default function App() {
     try {
       const result = await aiService.analyze(code, language, filename, level);
       setAnalysis(result);
-      setHistory(prev => [code, ...prev.filter(h => h !== code)].slice(0, 10));
+      const newSnapshot: HistoryItem = {
+        id: crypto.randomUUID(),
+        name: filename || `Untitled ${language.toUpperCase()}`,
+        code: code,
+        language: language,
+        timestamp: Date.now()
+      };
+      setHistory(prev => [newSnapshot, ...prev.filter(h => h.code !== code)].slice(0, 10));
     } catch (err: any) {
       const msg = err.message?.toLowerCase() || "";
       if (msg.includes("429") || msg.includes("quota")) {
@@ -164,7 +171,7 @@ export default function App() {
           onClear={() => { setCode(''); setAnalysis(null); setLanguage('plaintext'); setFilename(''); }} 
           onUpload={() => (window as any).triggerFileInput?.()} 
           history={history} 
-          loadHistory={(h) => { setCode(h); detectLanguage(h); }} 
+          loadHistory={(h) => { setCode(h.code); setLanguage(h.language); setFilename(h.name); }} 
           onShowSettings={() => setShowSettings(true)} 
         />
         

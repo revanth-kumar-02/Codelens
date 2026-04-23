@@ -89,3 +89,10 @@ export const AnalysisResultSchema = z.object({
     proTip: z.string()
   })
 });
+export interface HistoryItem {
+  id: string;
+  name: string;
+  code: string;
+  language: string;
+  timestamp: number;
+}
