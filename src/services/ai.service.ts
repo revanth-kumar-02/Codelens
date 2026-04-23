@@ -15,8 +15,19 @@ class AIService {
     this.isThrottled = status;
   }
 
-  private async fetchGroq(model: string, messages: any[]): Promise<string> {
+  private async fetchGroq(model: string, messages: any[], jsonMode: boolean = false): Promise<string> {
     if (!GROQ_API_KEY) throw new Error("Groq API Key Missing. Check your configuration.");
+
+    const body: any = {
+      model,
+      messages,
+      temperature: 0.1,
+      max_tokens: 4096
+    };
+
+    if (jsonMode) {
+      body.response_format = { type: "json_object" };
+    }
 
     const response = await fetch(GROQ_ENDPOINT, {
       method: 'POST',
@@ -24,13 +35,7 @@ class AIService {
         'Authorization': `Bearer ${GROQ_API_KEY}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        model,
-        messages,
-        temperature: 0.1,
-        max_tokens: 4096,
-        response_format: { type: "json_object" }
-      })
+      body: JSON.stringify(body)
     });
 
     if (!response.ok) {
@@ -43,13 +48,19 @@ class AIService {
     return data.choices[0]?.message?.content || "";
   }
 
-  private async executeWithFallback(prompt: string, priorityModel: string | null = null, systemPrompt: string = "You are a helpful coding assistant."): Promise<string> {
+  private async executeWithFallback(
+    prompt: string, 
+    priorityModel: string | null = null, 
+    systemPrompt: string = "You are a helpful coding assistant.",
+    jsonMode: boolean = false
+  ): Promise<string> {
     const models = [
       priorityModel,
       this.lastSuccessfulModel,
       "llama-3.3-70b-versatile",
       "llama-3.1-8b-instant",
-      "mixtral-8x7b-32768"
+      "llama-3.1-70b-versatile",
+      "gemma2-9b-it"
     ].filter((m, i, arr) => m && arr.indexOf(m) === i) as string[];
 
     if (this.isThrottled) {
@@ -63,7 +74,7 @@ class AIService {
         const responseText = await this.fetchGroq(m, [
           { role: "system", content: systemPrompt },
           { role: "user", content: prompt }
-        ]);
+        ], jsonMode);
 
         if (responseText) {
           this.lastSuccessfulModel = m;
@@ -100,14 +111,14 @@ class AIService {
 
     const systemPrompt = `You are CodeLens AI, an expert code analysis engine. 
     Analyze the code according to this persona: ${persona}
-    You MUST return JSON ONLY.`;
+    IMPORTANT: You MUST return a valid JSON object. Ensure the response is strictly JSON.`;
 
     const prompt = `Analyze this ${language} code in "${filename || 'unnamed'}":
     
     Code:
     ${code}
 
-    Return JSON matching this schema:
+    Return the analysis as a JSON object matching this schema exactly:
     {
       "score": 0-100,
       "good": ["point"],
@@ -121,7 +132,7 @@ class AIService {
       }
     }`;
 
-    const text = await this.executeWithFallback(prompt, "llama-3.3-70b-versatile", systemPrompt);
+    const text = await this.executeWithFallback(prompt, "llama-3.3-70b-versatile", systemPrompt, true);
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("Analysis engine returned invalid data structure.");
 
