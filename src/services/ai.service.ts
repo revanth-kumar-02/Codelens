@@ -28,9 +28,9 @@ class AIService {
     const models = [
       priorityModel,
       this.lastSuccessfulModel,
-      "gemini-1.5-flash",
-      "gemini-1.5-pro",
-      "gemini-2.0-flash-exp"
+      "gemini-3.1-flash",
+      "gemini-2.5-flash",
+      "gemini-2.5-pro"
     ].filter((m, i, arr) => m && arr.indexOf(m) === i) as string[];
 
     if (this.isThrottled) {
@@ -123,7 +123,7 @@ Return JSON ONLY matching this schema precisely:
 Code:
 ${code}`;
 
-    const text = await this.executeWithFallback(prompt, "gemini-1.5-flash");
+    const text = await this.executeWithFallback(prompt, "gemini-3.1-flash");
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("Analysis engine returned invalid data structure.");
     
@@ -161,7 +161,7 @@ ${code}`;
     
     const prompt = `Detect program language. Return ONLY one word: Python, JavaScript, TypeScript, Java, C++, C, HTML, CSS, Plaintext.\n\nCode snippet:\n${code.substring(0, 500)}`;
     try {
-      const text = await this.executeWithFallback(prompt, "gemini-2.5-flash");
+      const text = await this.executeWithFallback(prompt, "gemini-3.1-flash");
       const lang = text.trim();
       this.setCachedLang(code, lang);
       return lang;
@@ -175,7 +175,7 @@ ${code}`;
 ${code}
 Previous analysis: ${JSON.stringify(context || {})}
 Question: ${question}`;
-    return await this.executeWithFallback(prompt, "gemini-2.5-flash");
+    return await this.executeWithFallback(prompt, "gemini-3.1-flash");
   }
 }
 
