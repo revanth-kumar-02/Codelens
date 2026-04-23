@@ -12,11 +12,11 @@ interface CodeEditorProps {
   issues?: Issue[];
 }
 
-export const CodeEditor = ({ 
-  code, 
-  setCode, 
-  language, 
-  settings, 
+export const CodeEditor = ({
+  code,
+  setCode,
+  language,
+  settings,
   onFileUpload,
   issues = []
 }: CodeEditorProps) => {
@@ -28,7 +28,7 @@ export const CodeEditor = ({
       inherit: true,
       rules: [],
       colors: {
-        'editor.background': '#000000',
+        'editor.background': '#0e0e0eff',
         'editor.lineHighlightBackground': '#111111',
         'editorGutter.background': '#000000',
       }
@@ -73,7 +73,7 @@ export const CodeEditor = ({
   }, [language]);
 
   return (
-    <div 
+    <div
       className={`flex-1 flex flex-col overflow-hidden relative ${isDragging ? 'ring-2 ring-primary ring-inset' : ''}`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -81,13 +81,13 @@ export const CodeEditor = ({
     >
       <div className={`flex items-center justify-between border-b h-10 px-4 shrink-0 shadow-sm z-20 ${settings.theme === 'light' && !settings.editorBlack ? 'bg-slate-50 border-slate-200' : 'bg-black border-slate-800'}`}>
         <div className="flex items-center gap-4">
-           <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <span className={`text-[10px] font-black uppercase tracking-widest opacity-40 ${settings.theme === 'light' ? 'text-slate-600' : 'text-slate-500'}`}>Environment:</span>
             <span className="text-[10px] font-mono font-black text-primary uppercase tracking-widest">{language}</span>
           </div>
         </div>
         <div className="flex items-center gap-2">
-           <span className="text-[10px] uppercase tracking-widest font-black text-slate-500 opacity-50 italic">
+          <span className="text-[10px] uppercase tracking-widest font-black text-slate-500 opacity-50 italic">
             {settings.wordWrap ? 'Wrap Mode Active' : 'Static View'}
           </span>
         </div>
@@ -128,13 +128,13 @@ export const CodeEditor = ({
         {isDragging && (
           <div className="absolute inset-0 z-50 pointer-events-none flex items-center justify-center bg-primary/10 backdrop-blur-[2px]">
             <div className="bg-slate-950/90 border-2 border-dashed border-primary rounded-3xl p-10 flex flex-col items-center gap-6 shadow-2xl animate-in zoom-in-95 duration-200">
-               <div className="p-5 bg-primary/20 rounded-full animate-bounce">
+              <div className="p-5 bg-primary/20 rounded-full animate-bounce">
                 <Upload size={48} className="text-primary" />
-               </div>
-               <div className="text-center space-y-1">
-                 <h4 className="text-white font-black text-xl uppercase tracking-tight italic">Ingest Source</h4>
-                 <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Supports common dev extensions</p>
-               </div>
+              </div>
+              <div className="text-center space-y-1">
+                <h4 className="text-white font-black text-xl uppercase tracking-tight italic">Ingest Source</h4>
+                <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Supports common dev extensions</p>
+              </div>
             </div>
           </div>
         )}

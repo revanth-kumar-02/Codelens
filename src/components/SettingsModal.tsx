@@ -22,7 +22,7 @@ export const SettingsModal = ({ settings, setSettings, onClose }: SettingsModalP
       <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-secondary/10 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
 
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         className="relative z-10 flex-col h-full flex"
@@ -51,23 +51,23 @@ export const SettingsModal = ({ settings, setSettings, onClose }: SettingsModalP
                 <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">Core DNA</h3>
               </div>
               <div className="space-y-6 bg-slate-900/40 p-6 rounded-[1.5rem] border border-slate-800/50">
-                <Switch 
-                  label="Contextual Sensing" 
+                <Switch
+                  label="Contextual Sensing"
                   description="Auto-detect code grammar"
-                  enabled={settings.autoDetect} 
-                  onChange={(v) => updateSetting('autoDetect', v)} 
+                  enabled={settings.autoDetect}
+                  onChange={(v) => updateSetting('autoDetect', v)}
                 />
-                <Slider 
-                  label="Optical Scaling" 
+                <Slider
+                  label="Optical Scaling"
                   unit="px"
-                  min={12} max={22} 
-                  value={settings.fontSize} 
-                  onChange={(v) => updateSetting('fontSize', v)} 
+                  min={12} max={22}
+                  value={settings.fontSize}
+                  onChange={(v) => updateSetting('fontSize', v)}
                 />
-                <Switch 
-                  label="Adaptive Wrap" 
-                  enabled={settings.wordWrap} 
-                  onChange={(v) => updateSetting('wordWrap', v)} 
+                <Switch
+                  label="Adaptive Wrap"
+                  enabled={settings.wordWrap}
+                  onChange={(v) => updateSetting('wordWrap', v)}
                 />
               </div>
             </div>
@@ -79,26 +79,26 @@ export const SettingsModal = ({ settings, setSettings, onClose }: SettingsModalP
                 <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">Logic Flow</h3>
               </div>
               <div className="space-y-6 bg-slate-900/40 p-6 rounded-[1.5rem] border border-slate-800/50">
-                <Switch 
-                  label="Reactive Analysis" 
+                <Switch
+                  label="Reactive Analysis"
                   description="Analyze on code mutation"
-                  enabled={settings.autoAnalyze} 
-                  onChange={(v) => updateSetting('autoAnalyze', v)} 
+                  enabled={settings.autoAnalyze}
+                  onChange={(v) => updateSetting('autoAnalyze', v)}
                 />
-                <RadioGroup 
-                  label="Cognitive Depth" 
-                  value={settings.defaultLevel} 
+                <RadioGroup
+                  label="Cognitive Depth"
+                  value={settings.defaultLevel}
                   options={[
-                    {label: 'Novice', value: 'beginner'}, 
-                    {label: 'Pro', value: 'intermediate'}, 
-                    {label: 'Elite', value: 'advanced'}
+                    { label: 'Novice', value: 'beginner' },
+                    { label: 'Pro', value: 'intermediate' },
+                    { label: 'Elite', value: 'advanced' }
                   ]}
-                  onChange={(v) => updateSetting('defaultLevel', v)} 
+                  onChange={(v) => updateSetting('defaultLevel', v)}
                 />
-                <Switch 
-                  label="Health Indicator" 
-                  enabled={settings.showRating} 
-                  onChange={(v) => updateSetting('showRating', v)} 
+                <Switch
+                  label="Health Indicator"
+                  enabled={settings.showRating}
+                  onChange={(v) => updateSetting('showRating', v)}
                 />
               </div>
             </div>
@@ -110,23 +110,23 @@ export const SettingsModal = ({ settings, setSettings, onClose }: SettingsModalP
                 <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">Geometry</h3>
               </div>
               <div className="space-y-6 bg-slate-900/40 p-6 rounded-[1.5rem] border border-slate-800/50">
-                <RadioGroup 
-                  label="Spectral Theme" 
-                  value={settings.theme} 
-                  options={[{label: 'Midnight', value: 'dark'}, {label: 'Clinical', value: 'light'}]}
-                  onChange={(v) => updateSetting('theme', v)} 
+                <RadioGroup
+                  label="Spectral Theme"
+                  value={settings.theme}
+                  options={[{ label: 'Midnight', value: 'dark' }, { label: 'Clinical', value: 'light' }]}
+                  onChange={(v) => updateSetting('theme', v)}
                 />
-                <RadioGroup 
-                  label="Information Density" 
-                  value={settings.layout} 
-                  options={[{label: 'Vast', value: 'comfortable'}, {label: 'Tight', value: 'compact'}]}
-                  onChange={(v) => updateSetting('layout', v)} 
+                <RadioGroup
+                  label="Information Density"
+                  value={settings.layout}
+                  options={[{ label: 'Vast', value: 'comfortable' }, { label: 'Tight', value: 'compact' }]}
+                  onChange={(v) => updateSetting('layout', v)}
                 />
-                <Switch 
-                  label="System Appearance" 
-                  description="Force pure black background"
-                  enabled={settings.editorBlack} 
-                  onChange={(v) => updateSetting('editorBlack', v)} 
+                <Switch
+                  label="System Appearance"
+                  description="Change the system appearance"
+                  enabled={settings.editorBlack}
+                  onChange={(v) => updateSetting('editorBlack', v)}
                 />
               </div>
             </div>
@@ -135,15 +135,15 @@ export const SettingsModal = ({ settings, setSettings, onClose }: SettingsModalP
 
         <div className="flex-none py-6 flex flex-col items-center gap-6 relative z-30">
           <div className="flex items-center gap-10">
-            <button 
+            <button
               onClick={() => setSettings(DEFAULT_SETTINGS)}
               className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500 hover:text-primary transition-all flex items-center gap-3 italic"
             >
               <RefreshCw size={12} className="opacity-50" />
               Reset Matrix
             </button>
-            
-            <button 
+
+            <button
               onClick={onClose}
               className="px-10 py-3 bg-primary text-slate-950 rounded-2xl font-black text-sm hover:scale-[1.02] active:scale-95 shadow-[0_12px_24px_-8px_rgba(var(--primary-rgb),0.5)] transition-all uppercase tracking-tight italic"
             >
