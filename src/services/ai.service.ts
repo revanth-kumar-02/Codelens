@@ -28,9 +28,9 @@ class AIService {
     const models = [
       priorityModel,
       this.lastSuccessfulModel,
-      "gemini-3.1-flash",
       "gemini-2.5-flash",
-      "gemini-2.5-pro"
+      "gemini-2.5-pro",
+      "gemini-2.0-flash"
     ].filter((m, i, arr) => m && arr.indexOf(m) === i) as string[];
 
     if (this.isThrottled) {
@@ -53,7 +53,7 @@ class AIService {
           const model = genAI.getGenerativeModel({ model: m }, { apiVersion: 'v1' });
           const result = await model.generateContent(prompt);
           const responseText = result.response.text();
-          
+
           if (responseText) {
             this.lastSuccessfulModel = m;
             return responseText;
@@ -61,11 +61,11 @@ class AIService {
         } catch (err: any) {
           const msg = (err.message || "").toLowerCase();
           lastError = err.message;
-          
+
           if (msg.includes("429") || msg.includes("quota")) {
             console.warn(`Model ${m} rate limited on Key ${currentKeyIndex + 1}.`);
             keysFailedForThisModel++;
-            
+
             if (API_KEYS.length > 1) {
               this.rotateKey();
               continue; // Try SAME model with NEXT key
@@ -77,7 +77,7 @@ class AIService {
           if (msg.includes("503") || msg.includes("service unavailable")) {
             await this.sleep(2000);
             keysFailedForThisModel++; // Count as a failure to avoid infinite loop
-            continue; 
+            continue;
           }
 
           console.error(`AI Failure [${m}]:`, err.message);
@@ -90,7 +90,7 @@ class AIService {
       if (modelsTriedWithAllKeys >= 1) {
         // If the first model failed with all keys, we are definitely out of quota.
         // Don't waste time with other models.
-        break; 
+        break;
       }
     }
 
@@ -123,10 +123,10 @@ Return JSON ONLY matching this schema precisely:
 Code:
 ${code}`;
 
-    const text = await this.executeWithFallback(prompt, "gemini-3.1-flash");
+    const text = await this.executeWithFallback(prompt, "gemini-2.5-flash");
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("Analysis engine returned invalid data structure.");
-    
+
     const data = JSON.parse(jsonMatch[0]);
     const validated = AnalysisResultSchema.safeParse(data);
     if (!validated.success) throw new Error('Analysis result does not match expected format.');
@@ -158,10 +158,10 @@ ${code}`;
   async detectLanguage(code: string): Promise<string> {
     const cached = this.getCachedLang(code);
     if (cached) return cached;
-    
+
     const prompt = `Detect program language. Return ONLY one word: Python, JavaScript, TypeScript, Java, C++, C, HTML, CSS, Plaintext.\n\nCode snippet:\n${code.substring(0, 500)}`;
     try {
-      const text = await this.executeWithFallback(prompt, "gemini-3.1-flash");
+      const text = await this.executeWithFallback(prompt, "gemini-2.5-flash");
       const lang = text.trim();
       this.setCachedLang(code, lang);
       return lang;
@@ -175,7 +175,7 @@ ${code}`;
 ${code}
 Previous analysis: ${JSON.stringify(context || {})}
 Question: ${question}`;
-    return await this.executeWithFallback(prompt, "gemini-3.1-flash");
+    return await this.executeWithFallback(prompt, "gemini-2.5-flash");
   }
 }
 
