@@ -1,13 +1,7 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { AnalysisResult, AnalysisResultSchema } from '../types';
 
-const API_KEYS = (import.meta.env.VITE_GEMINI_API_KEY || "").split(",").map((k: string) => k.trim()).filter(Boolean);
-let currentKeyIndex = 0;
-
-function getGenAI() {
-  if (API_KEYS.length === 0) return null;
-  return new GoogleGenerativeAI(API_KEYS[currentKeyIndex]);
-}
+const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || "";
+const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
 
 class AIService {
   private lastSuccessfulModel: string | null = null;
@@ -17,108 +11,117 @@ class AIService {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  private rotateKey() {
-    if (API_KEYS.length > 1) {
-      currentKeyIndex = (currentKeyIndex + 1) % API_KEYS.length;
-      console.log(`Rotating to API Key #${currentKeyIndex + 1}`);
-    }
+  public setThrottled(status: boolean) {
+    this.isThrottled = status;
   }
 
-  private async executeWithFallback(prompt: string, priorityModel: string | null = null): Promise<string> {
+  private async fetchGroq(model: string, messages: any[]): Promise<string> {
+    if (!GROQ_API_KEY) throw new Error("Groq API Key Missing. Check your configuration.");
+
+    const response = await fetch(GROQ_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${GROQ_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        temperature: 0.1,
+        max_tokens: 4096,
+        response_format: { type: "json_object" }
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const msg = errorData.error?.message || response.statusText;
+      throw new Error(`Groq API Error [${response.status}]: ${msg}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0]?.message?.content || "";
+  }
+
+  private async executeWithFallback(prompt: string, priorityModel: string | null = null, systemPrompt: string = "You are a helpful coding assistant."): Promise<string> {
     const models = [
       priorityModel,
       this.lastSuccessfulModel,
-      "gemini-1.5-flash",
-      "gemini-1.5-flash-8b",
-      "gemini-2.0-flash",
-      "gemini-1.5-pro"
+      "llama-3.3-70b-versatile",
+      "llama-3.1-8b-instant",
+      "mixtral-8x7b-32768"
     ].filter((m, i, arr) => m && arr.indexOf(m) === i) as string[];
 
     if (this.isThrottled) {
-      throw new Error("COOLDOWN: System is cooling down from rate limits. Please wait.");
+      throw new Error("COOLDOWN: System is cooling down. Please wait.");
     }
 
     let lastError = "";
 
     for (const m of models) {
-      let keysFailedForThisModel = 0;
-      const totalKeys = API_KEYS.length;
+      try {
+        const responseText = await this.fetchGroq(m, [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: prompt }
+        ]);
 
-      while (keysFailedForThisModel < totalKeys) {
-        const genAI = getGenAI();
-        if (!genAI) throw new Error("API Key Missing. Check your configuration.");
-
-        try {
-          const model = genAI.getGenerativeModel({ model: m }, { apiVersion: 'v1' });
-          const result = await model.generateContent(prompt);
-          const responseText = result.response.text();
-
-          if (responseText) {
-            this.lastSuccessfulModel = m;
-            return responseText;
-          }
-        } catch (err: any) {
-          const msg = (err.message || "").toLowerCase();
-          lastError = err.message;
-
-          // 429 = Rate Limit, 503 = Service Unavailable (often due to overload)
-          if (msg.includes("429") || msg.includes("quota") || msg.includes("503") || msg.includes("service unavailable")) {
-            console.warn(`Model ${m} failed on Key ${currentKeyIndex + 1}: ${err.message}`);
-            keysFailedForThisModel++;
-
-            if (totalKeys > 1) {
-              this.rotateKey();
-              if (msg.includes("503")) await this.sleep(1000); // Small delay for 503
-              continue; // Try SAME model with NEXT key
-            } else {
-              break; // Only one key, move to next model
-            }
-          }
-
-          console.error(`AI Failure [${m}]:`, err.message);
-          break; // Hard failure (e.g. 404), try next model
+        if (responseText) {
+          this.lastSuccessfulModel = m;
+          return responseText;
         }
+      } catch (err: any) {
+        lastError = err.message;
+        const msg = lastError.toLowerCase();
+
+        if (msg.includes("429") || msg.includes("rate limit")) {
+          console.warn(`Groq Model ${m} rate limited. Trying fallback...`);
+          await this.sleep(1000);
+          continue;
+        }
+
+        console.error(`Groq Failure [${m}]:`, err.message);
+        continue; // Try next model
       }
     }
 
-    if (lastError.includes("429") || lastError.includes("quota")) {
-      throw new Error("QUOTA_EXHAUSTED: All API keys have reached their rate limits. Cooling down.");
+    if (lastError.includes("429")) {
+      throw new Error("QUOTA_EXHAUSTED: Groq rate limits exceeded. Please wait a moment.");
     }
     
-    throw new Error(lastError || "Intelligence Engine Offline. Please check your internet connection and API keys.");
-  }
-
-  public setThrottled(status: boolean) {
-    this.isThrottled = status;
+    throw new Error(lastError || "Groq Intelligence Offline. Please check your internet connection.");
   }
 
   async analyze(code: string, language: string, filename?: string, level: string = 'intermediate'): Promise<AnalysisResult> {
     const persona = {
-      beginner: "STRICT PERSONA: Explain like I'm 5. Use simple words and real-world analogies (cooking, toys). NO technical jargon like 'modulo' or 'operator' unless you explain them with a simple story. Focus on what happens in plain English.",
-      intermediate: "STRICT PERSONA: Technical Mentor. Focus on best practices, code readability, and common idioms. Explain why this approach is good/bad for a junior developer. Use technical terms correctly.",
-      advanced: "STRICT PERSONA: Senior Software Architect. Analyze performance, memory efficiency, Big O complexity, security risks, and architectural patterns. Use deep technical language and assume the reader is an expert."
+      beginner: "STRICT PERSONA: Explain like I'm 5. Use simple words and real-world analogies. NO technical jargon unless explained with a story.",
+      intermediate: "STRICT PERSONA: Technical Mentor. Focus on best practices, readability, and common idioms.",
+      advanced: "STRICT PERSONA: Senior Software Architect. Analyze performance, memory, security, and patterns."
     }[level.toLowerCase() as 'beginner' | 'intermediate' | 'advanced'] || "Technical but accessible.";
 
-    const prompt = `Analyze this ${language} code in "${filename || 'unnamed'}" using the following perspective: ${persona}
+    const systemPrompt = `You are CodeLens AI, an expert code analysis engine. 
+    Analyze the code according to this persona: ${persona}
+    You MUST return JSON ONLY.`;
 
-Return JSON ONLY matching this schema precisely:
-{
-  "score": 0-100,
-  "good": ["point info"],
-  "bad": ["issue info"],
-  "issues": [{"id": "uuid", "type": "error|warning|suggestion", "title": "string", "line": "Line X", "description": "text", "snippet": "code block"}],
-  "debug": {"errorTitle": "string", "fileLine": "string", "rootCause": "text", "suggestedFix": "text", "fixedCode": "code"},
-  "explanation": {
-    "whatItDoes": "A high-level summary of the code based on the persona rules.",
-    "howItWorks": [{"title": "Step title in persona style", "description": "Detailed explanation using persona rules", "code": "optional"}],
-    "proTip": "A value-add tip specific to the persona level"
-  }
-}
+    const prompt = `Analyze this ${language} code in "${filename || 'unnamed'}":
+    
+    Code:
+    ${code}
 
-Code:
-${code}`;
+    Return JSON matching this schema:
+    {
+      "score": 0-100,
+      "good": ["point"],
+      "bad": ["point"],
+      "issues": [{"id": "uuid", "type": "error|warning|suggestion", "title": "str", "line": "Line X", "description": "str", "snippet": "code"}],
+      "debug": {"errorTitle": "str", "fileLine": "str", "rootCause": "str", "suggestedFix": "str", "fixedCode": "code"},
+      "explanation": {
+        "whatItDoes": "str",
+        "howItWorks": [{"title": "str", "description": "str", "code": "optional"}],
+        "proTip": "str"
+      }
+    }`;
 
-    const text = await this.executeWithFallback(prompt, "gemini-1.5-flash");
+    const text = await this.executeWithFallback(prompt, "llama-3.3-70b-versatile", systemPrompt);
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("Analysis engine returned invalid data structure.");
 
@@ -129,36 +132,24 @@ ${code}`;
     return validated.data;
   }
 
-  private getCachedLang(code: string): string | null {
+  async detectLanguage(code: string): Promise<string> {
     const snippet = code.substring(0, 500);
     const cached = localStorage.getItem('codelens_lang_cache');
     if (cached) {
       try {
         const { c, l } = JSON.parse(cached);
         if (c === snippet) return l;
-      } catch (e) {
-        localStorage.removeItem('codelens_lang_cache');
-      }
+      } catch (e) {}
     }
-    return null;
-  }
 
-  private setCachedLang(code: string, lang: string) {
-    localStorage.setItem('codelens_lang_cache', JSON.stringify({
-      c: code.substring(0, 500),
-      l: lang
-    }));
-  }
-
-  async detectLanguage(code: string): Promise<string> {
-    const cached = this.getCachedLang(code);
-    if (cached) return cached;
-
-    const prompt = `Detect program language. Return ONLY one word: Python, JavaScript, TypeScript, Java, C++, C, HTML, CSS, Plaintext.\n\nCode snippet:\n${code.substring(0, 500)}`;
+    const systemPrompt = "You are a language detection expert. Return ONLY the language name.";
+    const prompt = `Detect program language. Return ONLY one word: Python, JavaScript, TypeScript, Java, C++, C, HTML, CSS, Plaintext.\n\nCode snippet:\n${snippet}`;
+    
     try {
-      const text = await this.executeWithFallback(prompt, "gemini-1.5-flash");
-      const lang = text.trim();
-      this.setCachedLang(code, lang);
+      const text = await this.executeWithFallback(prompt, "llama-3.1-8b-instant", systemPrompt);
+      const lang = text.trim().split(' ')[0].replace(/[^a-zA-Z]/g, '');
+      
+      localStorage.setItem('codelens_lang_cache', JSON.stringify({ c: snippet, l: lang }));
       return lang;
     } catch (err) {
       return "plaintext";
@@ -166,11 +157,13 @@ ${code}`;
   }
 
   async chat(code: string, question: string, filename?: string, context?: any): Promise<string> {
-    const prompt = `You are an expert debugger. Code context (${filename || 'unnamed'}):
-${code}
-Previous analysis: ${JSON.stringify(context || {})}
-Question: ${question}`;
-    return await this.executeWithFallback(prompt, "gemini-2.5-flash");
+    const systemPrompt = "You are an expert debugger helping a user with their code.";
+    const prompt = `Code context (${filename || 'unnamed'}):
+    ${code}
+    Previous analysis: ${JSON.stringify(context || {})}
+    Question: ${question}`;
+    
+    return await this.executeWithFallback(prompt, "llama-3.3-70b-versatile", systemPrompt);
   }
 }
 
