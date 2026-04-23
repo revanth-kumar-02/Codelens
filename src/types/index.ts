@@ -17,6 +17,7 @@ export interface AppSettings {
   showRating: boolean;
   theme: 'dark' | 'light';
   layout: 'compact' | 'comfortable';
+  editorBlack: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -28,7 +29,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   defaultLevel: "intermediate",
   showRating: true,
   theme: "dark",
-  layout: "comfortable"
+  layout: "comfortable",
+  editorBlack: true
 };
 
 export interface Issue {

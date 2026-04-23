@@ -122,6 +122,12 @@ export const SettingsModal = ({ settings, setSettings, onClose }: SettingsModalP
                   options={[{label: 'Vast', value: 'comfortable'}, {label: 'Tight', value: 'compact'}]}
                   onChange={(v) => updateSetting('layout', v)} 
                 />
+                <Switch 
+                  label="Onyx Editor" 
+                  description="Force pure black background"
+                  enabled={settings.editorBlack} 
+                  onChange={(v) => updateSetting('editorBlack', v)} 
+                />
               </div>
             </div>
           </div>
