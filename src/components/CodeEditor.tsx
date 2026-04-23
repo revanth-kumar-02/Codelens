@@ -22,7 +22,7 @@ export const CodeEditor = ({
 }: CodeEditorProps) => {
   const [isDragging, setIsDragging] = useState(false);
 
-  const handleEditorDidMount = (editor: any, monaco: any) => {
+  const handleBeforeMount = (monaco: any) => {
     monaco.editor.defineTheme('pure-black', {
       base: 'vs-dark',
       inherit: true,
@@ -33,6 +33,9 @@ export const CodeEditor = ({
         'editorGutter.background': '#000000',
       }
     });
+  };
+
+  const handleEditorDidMount = (editor: any) => {
     editor.focus();
   };
 
@@ -97,6 +100,7 @@ export const CodeEditor = ({
           value={code}
           theme={settings.editorBlack ? "pure-black" : (settings.theme === 'light' ? "light" : "vs-dark")}
           onChange={(value) => setCode(value || '')}
+          beforeMount={handleBeforeMount}
           onMount={handleEditorDidMount}
           options={{
             fontSize: settings.fontSize,

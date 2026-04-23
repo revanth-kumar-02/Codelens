@@ -123,7 +123,7 @@ export const SettingsModal = ({ settings, setSettings, onClose }: SettingsModalP
                   onChange={(v) => updateSetting('layout', v)} 
                 />
                 <Switch 
-                  label="Onyx Editor" 
+                  label="System Appearance" 
                   description="Force pure black background"
                   enabled={settings.editorBlack} 
                   onChange={(v) => updateSetting('editorBlack', v)} 
