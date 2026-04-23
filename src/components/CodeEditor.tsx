@@ -23,9 +23,17 @@ export const CodeEditor = ({
   const [isDragging, setIsDragging] = useState(false);
 
   const handleEditorDidMount = (editor: any, monaco: any) => {
+    monaco.editor.defineTheme('pure-black', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [],
+      colors: {
+        'editor.background': '#000000',
+        'editor.lineHighlightBackground': '#111111',
+        'editorGutter.background': '#000000',
+      }
+    });
     editor.focus();
-    
-    // Line highlighting logic for issues could go here
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -68,7 +76,7 @@ export const CodeEditor = ({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      <div className={`flex items-center justify-between border-b h-10 px-4 shrink-0 shadow-sm z-20 ${settings.theme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-slate-900 border-slate-800'}`}>
+      <div className={`flex items-center justify-between border-b h-10 px-4 shrink-0 shadow-sm z-20 ${settings.theme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-black border-slate-800'}`}>
         <div className="flex items-center gap-4">
            <div className="flex items-center gap-2">
             <span className={`text-[10px] font-black uppercase tracking-widest opacity-40 ${settings.theme === 'light' ? 'text-slate-600' : 'text-slate-500'}`}>Environment:</span>
@@ -87,7 +95,7 @@ export const CodeEditor = ({
           height="100%"
           language={monacoLanguage}
           value={code}
-          theme={settings.theme === 'light' ? "light" : "vs-dark"}
+          theme={settings.theme === 'light' ? "light" : "pure-black"}
           onChange={(value) => setCode(value || '')}
           onMount={handleEditorDidMount}
           options={{
