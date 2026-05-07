@@ -55,7 +55,7 @@ export default function App() {
 
   // --- Settings State ---
   const [settings, setSettings] = useState<AppSettings>(() => {
-    const saved = localStorage.getItem('codelens_settings_v2');
+    const saved = localStorage.getItem('codelens_settings_v3');
     if (saved) {
       try { return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) }; } 
       catch (e) { return DEFAULT_SETTINGS; }
@@ -65,7 +65,7 @@ export default function App() {
 
   // --- Persistence & Theming ---
   useEffect(() => {
-    localStorage.setItem('codelens_settings_v2', JSON.stringify(settings));
+    localStorage.setItem('codelens_settings_v3', JSON.stringify(settings));
     if (settings.theme === 'light') document.documentElement.classList.add('light');
     else document.documentElement.classList.remove('light');
   }, [settings]);
@@ -116,6 +116,19 @@ export default function App() {
       } else {
         setError(err.message || "Intelligence Engine Offline");
       }
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const explainCode = async (level: string) => {
+    if (!code.trim() || !analysis) return;
+    setIsAnalyzing(true);
+    try {
+      const explanation = await aiService.explain(code, language, level, filename);
+      setAnalysis(prev => prev ? { ...prev, explanation } : null);
+    } catch (err: any) {
+      setError(err.message || "Failed to generate explanation");
     } finally {
       setIsAnalyzing(false);
     }
@@ -215,7 +228,10 @@ export default function App() {
                     isAsking={isAsking} 
                     loading={isAnalyzing}
                     level={settings.defaultLevel}
-                    setLevel={(lvl) => { setSettings(s => ({...s, defaultLevel: lvl as any})); if(code.trim()) analyzeCode(lvl as any); }}
+                    setLevel={(lvl) => { 
+                      setSettings(s => ({...s, defaultLevel: lvl as any})); 
+                      explainCode(lvl); 
+                    }}
                   />
                 )}
               </motion.div>
